@@ -1,0 +1,129 @@
+.green {
+  background: #9ccc65;
+}
+
+.brown {
+  background: #795548;
+}
+
+.blue {
+  background: #2196f3;
+}
+
+.purple {
+  background: #8e44ad;
+}
+
+.red {
+  background: #e53935;
+}
+
+.orange {
+  background: #f39c12;
+}
+
+.yellow {
+  background: #f1c40f;
+}
+
+.dark_blue {
+  background: #1a237e;
+}
+
+.gray {
+  background: #757575;
+}
+
+.light_gray {
+  background: #bdbdbd;
+}
+
+body, #canvas {
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+}
+
+#canvas-box {
+  /*position: absolute;
+  top: 50%;
+  left: 50%;
+  display: block;*/
+  width: 800px;
+}
+
+#canvas {
+  margin-left: -4px;
+  border: 4px solid #999;
+  border-radius: 4px;
+  cursor: crosshair;
+}
+
+#color-platte {
+  list-style: none;
+  padding: 0 4px;
+  margin: 0;
+}
+#color-platte li {
+  position: relative;
+  width: 9%;
+  height: 40px;
+  margin-left: 1%;
+  display: block;
+  float: left;
+  border: 1px solid #888;
+  cursor: pointer;
+}
+#color-box li:hover {
+  transform: scale(1.2, 1.2);
+}
+#color-box li:first-child {
+  margin-left: 4px;
+}
+
+button.clear, button.to_png {
+  width: 100%;
+  height: 40px;
+  margin-top: 5px;
+  font: 14px/1 Helvetica, Arial;
+  border: 1px solid #666;
+  background: none;
+  cursor: pointer;
+}
+button.clear:hover, button.to_png:hover {
+  background: #666;
+  color: white;
+}
+
+#preview {
+  margin-left: 20px;
+  border: 4px solid #999;
+  border-radius: 4px;
+}
+
+.cf:before,
+.cf:after {
+  content: " ";
+  display: table;
+}
+
+.cf:after {
+  clear: both;
+}
+
+.cf {
+  *zoom: 1;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+*:before,
+*:after {
+  box-sizing: border-box;
+}
+
+.flt-left {
+  float: left;
+}
