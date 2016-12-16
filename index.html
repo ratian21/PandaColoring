@@ -1,0 +1,404 @@
+<html>
+<head>
+
+	
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+
+</script>
+	<script type="text/javascript">
+var __slice = Array.prototype.slice;
+(function($) {
+  var Sketch;
+  $.fn.sketch = function() {
+    var args, key, sketch;
+    key = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
+    if (this.length > 1) {
+      $.error('Sketch.js can only be called on one element at a time.');
+    }
+    sketch = this.data('sketch');
+    if (typeof key === 'string' && sketch) {
+      if (sketch[key]) {
+        if (typeof sketch[key] === 'function') {
+          return sketch[key].apply(sketch, args);
+        } else if (args.length === 0) {
+          return sketch[key];
+        } else if (args.length === 1) {
+          return sketch[key] = args[0];
+        }
+      } else {
+        return $.error('Sketch.js did not recognize the given command.');
+      }
+    } else if (sketch) {
+      return sketch;
+    } else {
+      this.data('sketch', new Sketch(this.get(0), key));
+      return this;
+    }
+  };
+  Sketch = (function() {
+    function Sketch(el, opts) {
+      this.el = el;
+      this.canvas = $(el);
+      this.el.width = window.innerWidth;
+      this.el.height = window.innerHeight;
+      this.context = el.getContext('2d');
+      this.options = $.extend({
+        toolLinks: true,
+        defaultTool: 'marker',
+        defaultColor: '#ff9255',
+        defaultSize: 20
+      }, opts);
+      this.painting = false;
+      this.color = this.options.defaultColor;
+      this.size = this.options.defaultSize;
+      this.tool = this.options.defaultTool;
+      this.actions = [];
+      this.action = [];
+      this.canvas.bind('click mousedown mouseup mousemove mouseleave mouseout touchstart touchmove touchend touchcancel', this.onEvent);
+      if (this.options.toolLinks) {
+        $('body').delegate("a[href=\"#" + (this.canvas.attr('id')) + "\"]", 'click', function(e) {
+          var $canvas, $this, key, sketch, _i, _len, _ref;
+          $this = $(this);
+          $canvas = $($this.attr('href'));
+          sketch = $canvas.data('sketch');
+          _ref = ['color', 'size', 'tool'];
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            key = _ref[_i];
+            if ($this.attr("data-" + key)) {
+              sketch.set(key, $(this).attr("data-" + key));
+            }
+          }
+          if ($(this).attr('data-download')) {
+            sketch.download($(this).attr('data-download'));
+          }
+          return false;
+        });
+      }
+    }
+    Sketch.prototype.download = function(format) {
+      var mime;
+      format || (format = "svg");
+      if (format === "svg") {
+        format = "svg";
+      }
+      mime = "image/" + format;
+      return window.open(this.el.toDataURL(mime));
+    };
+    Sketch.prototype.set = function(key, value) {
+      this[key] = value;
+      return this.canvas.trigger("sketch.change" + key, value);
+    };
+    Sketch.prototype.startPainting = function() {
+      this.painting = true;
+      return this.action = {
+        tool: this.tool,
+        color: this.color,
+        size: parseFloat(this.size),
+        events: []
+      };
+    };
+    Sketch.prototype.stopPainting = function() {
+      if (this.action) {
+        this.actions.push(this.action);
+      }
+      this.painting = false;
+      this.action = null;
+      //return this.redraw();
+    };
+    Sketch.prototype.onEvent = function(e) {
+      if (e.originalEvent && e.originalEvent.targetTouches) {
+        if (e.originalEvent.targetTouches[0] !== undefined && e.originalEvent.targetTouches[0].pageX!==undefined){
+    e.pageX = e.originalEvent.targetTouches[0].pageX;
+}
+if (e.originalEvent.targetTouches[0] !== undefined &&e.originalEvent.targetTouches[0].pageY){
+    e.pageY = e.originalEvent.targetTouches[0].pageY;
+}
+      }
+      $.sketch.tools[$(this).data('sketch').tool].onEvent.call($(this).data('sketch'), e);
+      e.preventDefault();
+      return false;
+    };
+    Sketch.prototype.redraw = function() {
+      var sketch;
+      this.el.width = this.canvas.width();
+      this.context = this.el.getContext('2d');
+      sketch = this;
+      $.each(this.actions, function() {
+        if (this.tool) {
+          return $.sketch.tools[this.tool].draw.call(sketch, this);
+        }
+      });
+      if (this.painting && this.action) {
+        return $.sketch.tools[this.action.tool].draw.call(sketch, this.action);
+      }
+    };
+    return Sketch;
+  })();
+  $.sketch = {
+    tools: {}
+  };
+  $.sketch.tools.marker = {
+    onEvent: function(e) {
+      switch (e.type) {
+        case 'mousedown':
+        case 'touchstart':
+          this.startPainting();
+          break;
+        case 'mouseup':
+        case 'mouseout':
+        case 'mouseleave':
+        case 'touchend':
+        case 'touchcancel':
+          this.stopPainting();
+      }
+      if (this.painting) {
+        this.action.events.push({
+          x: e.pageX - this.canvas.offset().left,
+          y: e.pageY - this.canvas.offset().top,
+          event: e.type
+        });
+        return this.redraw();
+      }
+    },
+    draw: function(action) {
+      var event, previous, _i, _len, _ref;
+      this.context.lineJoin = "round";
+      this.context.lineCap = "round";
+      this.context.beginPath();
+      this.context.moveTo(action.events[0].x, action.events[0].y);
+      _ref = action.events;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        event = _ref[_i];
+        this.context.lineTo(event.x, event.y);
+        previous = event;
+      }
+      this.context.strokeStyle = action.color;
+      this.context.lineWidth = action.size;
+      return this.context.stroke();
+    }
+  };
+  
+
+ /*$( document ).ready(function() {
+    var panda = document.getElementById('panda');
+    panda.style.backgroundImage = "url('panda1.png')";
+    $('#canvas').sketch();
+});*/
+
+    $( document ).ready(function() {
+    var panda = document.getElementById('panda');
+    panda.style.backgroundImage = "url('panda" + getRandomIntInclusive(1,3) + ".png')";
+    $('#canvas').sketch();
+});
+    
+  function getRandomIntInclusive(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+    
+
+
+
+/*
+  return $.sketch.tools.eraser = {
+    onEvent: function(e) {
+      return $.sketch.tools.marker.onEvent.call(this, e);
+    },
+    draw: function(action) {
+      var oldcomposite;
+      oldcomposite = this.context.globalCompositeOperation;
+      this.context.globalCompositeOperation = "copy";
+      action.color = "rgba(0,0,0,0)";
+      $.sketch.tools.marker.draw.call(this, action);
+      return this.context.globalCompositeOperation = oldcomposite;
+    }
+  };
+  */
+})(jQuery);
+</script>
+  
+	<title>Panda Coloring</title>
+    
+<style>
+body {
+	padding: 0;
+	margin: 0;
+	margin-left: 0;
+	overflow: hidden;
+	background-color: #ffffff;
+}
+
+#canvas {
+
+	background-size: cover;
+	position: fixed;
+
+}
+
+.roundbutton {
+	width: 60pt;
+	height: 60pt;
+	border-radius: 30pt;
+	background-color: #2473ff;
+	position: fixed;
+	top: 50%;
+	margin-top: -30pt;
+	margin-left: 20pt;
+	vertical-align: middle;
+	z-index: 2;
+	float: left;
+	cursor: pointer;
+	-webkit-transition: transform 0.6s cubic-bezier(.05,.87,.55,1);
+}
+
+.colorbox a {
+	width: 36pt;
+	height: 36pt;
+	display: block;
+	border-radius: 30pt;
+	margin-left: 5pt;
+	cursor: pointer;
+	-webkit-transition: transform 0.6s cubic-bezier(.05, .87, .55, 1);
+	box-sizing:border-box;
+	pointer-events: auto;
+}
+
+.colorbox p {
+	display: inline-block;
+	margin-top: 20pt;
+	margin-bottom: 0;
+}
+
+.colorbox a:hover {
+	-webkit-transform: scale(1.2, 1.2);
+}
+
+.colorbox a:focus {
+	-webkit-transform: scale(1.3, 1.3);
+}
+
+.roundbutton img {
+	width: 100%;
+	height: 100%;
+}
+/*"url('panda1.png')"*/
+.overlay {
+	position: fixed;
+	width: 100%;
+	height: 100%;
+	background-image: url(images/panda1.png);
+	background-size: auto 64%;
+	pointer-events:none;
+	background-repeat: no-repeat;
+	background-position: center center;
+}
+
+
+.colorbox {
+	position: fixed;
+	overflow: auto;
+	width: 100%;
+	height: 80pt;
+	bottom:0;
+	text-align: center;
+	pointer-events:none;
+}
+
+.sizebox {
+	position: fixed;
+	overflow: auto;
+	width: 100%;
+	height: 80pt;
+	top:0;
+	text-align: center;
+	pointer-events: none;
+}
+
+.sizebox p {
+	display: inline-block;
+	margin-top: 20pt;
+	margin-bottom: 0;
+}
+
+.sizebox a {
+	pointer-events: auto;
+	background-color: #e0e0eb;
+	width: 36pt;
+	height: 36pt;
+	display: block;
+	border-radius: 30pt;
+	margin-left: 10pt;
+	cursor: pointer;
+	-webkit-transition: transform 0.6s cubic-bezier(.05, .87, .55, 1);
+	box-sizing:border-box;
+	background-image: url('dot.svg');
+	background-size: 10%;
+	background-position: center center;
+	background-repeat: no-repeat;
+}
+
+.sizebox a:hover {
+	-webkit-transform: scale(1.2, 1.2);
+}
+
+.sizebox a:focus {
+	-webkit-transform: scale(1.3, 1.3);
+}
+  
+</style>
+  
+</head>
+<body>
+<canvas id="canvas" width="3000" height="3000"></canvas>
+
+	<div class="overlay" id="panda"></div>
+	<div class="colorbox">
+		<p><a href="#canvas" data-color="#e0e0eb" style="background-color: #e0e0eb;"></a></p>
+		<p><a href="#canvas" data-color="#3f567a" style="background-color: #3f567a;"></a></p>
+    <p><a href="#canvas" data-color="#874c56" style="background-color: #874c56;"></a></p>
+		<p><a href="#canvas" data-color="#2a2935" style="background-color: #2a2935;"></a></p>
+		<p><a href="#canvas" data-color="#1dea00" style="background-color: #1dea00;"></a></p>
+		<p><a href="#canvas" data-color="#bbef18" style="background-color: #bbef18;"></a></p>
+		<p><a href="#canvas" data-color="#ffef2c" style="background-color: #ffef2c;"></a></p>
+		<p><a href="#canvas" data-color="#ffb829" style="background-color: #ffb829;"></a></p>
+		<p><a href="#canvas" data-color="#ff9255" style="background-color: #ff9255;"></a></p>
+		<p><a href="#canvas" data-color="#ff5e2c" style="background-color: #ff5e2c;"></a></p>
+		<p><a href="#canvas" data-color="#ff276a" style="background-color: #ff276a;"></a></p>
+		<p><a href="#canvas" data-color="#f222e4" style="background-color: #f222e4;"></a></p>
+		<p><a href="#canvas" data-color="#ffb8f0" style="background-color: #ffb8f0;"></a></p>
+		<p><a href="#canvas" data-color="#a22cff" style="background-color: #a22cff;"></a></p>
+		<p><a href="#canvas" data-color="#4829ff" style="background-color: #4829ff;"></a></p>
+		<p><a href="#canvas" data-color="#2ea6ff" style="background-color: #2ea6ff;"></a></p>
+		<p><a href="#canvas" data-color="#2ef5ff" style="background-color: #2ef5ff;"></a></p>
+		<p><a href="#canvas" data-color="#64ffe1" style="background-color: #64ffe1;"></a></p>
+	</div>
+  
+  <div class="sizebox">
+      <p><a href="#canvas" style="background-size: 10%;" data-size="3"></a></p>
+      <p><a href="#canvas" style="background-size: 24%;" data-size="7"></a></p>
+      <p><a href="#canvas" style="background-size: 35%;" data-size="12"></a></p>
+      <p><a href="#canvas" style="background-size: 59%;" data-size="20"></a></p>
+      <p><a href="#canvas" style="background-size: 80%;" data-size="50"></a></p>
+      <p><a href="#canvas" style="background-size: 92%;" data-size="100"></a></p>
+  </div>
+<!-- AddToAny BEGIN -->
+<div class="a2a_kit a2a_kit_size_32 a2a_default_style">
+<a class="a2a_dd" href="https://www.addtoany.com/share"></a>
+<a class="a2a_button_facebook"></a>
+<a class="a2a_button_twitter"></a>
+<a class="a2a_button_google_plus"></a>
+<a class="a2a_button_email"></a>
+</div>
+<script async src="https://static.addtoany.com/menu/page.js"></script>
+<!-- AddToAny END -->
+</body>
+
+</html>
+
